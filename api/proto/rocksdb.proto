@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package rocksdb;
+option go_package = "rocksdb-service/api/proto";
+
+service RocksDBService {
+    // Put stores a key-value pair
+    rpc Put(PutRequest) returns (PutResponse) {}
+    
+    // Get retrieves a value for a given key
+    rpc Get(GetRequest) returns (GetResponse) {}
+    
+    // Delete removes a key-value pair
+    rpc Delete(DeleteRequest) returns (DeleteResponse) {}
+    
+    // StreamGet retrieves multiple key-value pairs based on exact keys or prefix
+    rpc StreamGet(StreamGetRequest) returns (stream StreamGetResponse) {}
+}
+
+message PutRequest {
+    string key = 1;
+    bytes value = 2;
+}
+
+message PutResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+message GetRequest {
+    string key = 1;
+}
+
+message GetResponse {
+    bytes value = 1;
+    bool found = 2;
+    string error = 3;
+}
+
+message DeleteRequest {
+    string key = 1;
+}
+
+message DeleteResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+message StreamGetRequest {
+    oneof query {
+        string prefix = 1;
+        KeySet keys = 2;
+    }
+}
+
+message KeySet {
+    repeated string keys = 1;
+}
+
+message StreamGetResponse {
+    string key = 1;
+    bytes value = 2;
+    string error = 3;
+}
+
