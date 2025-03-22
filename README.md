@@ -1,6 +1,6 @@
 # RocksDB gRPC Service
 
-This service provides a gRPC interface to RocksDB, offering key-value storage operations with support for streaming queries.
+A gRPC service providing a robust interface to RocksDB, offering key-value storage operations with support for streaming queries.
 
 ## Features
 
@@ -13,179 +13,103 @@ This service provides a gRPC interface to RocksDB, offering key-value storage op
     - Prefix search (key*)
     - Multiple exact keys
 
-## Requirements
+## Prerequisites
 
 - Go 1.21 or later
-- RocksDB and its dependencies
-- Protocol Buffers compiler (protoc)
+- RocksDB installed (via Homebrew on macOS)
+- Protocol Buffers compiler
 
-## Building from Source
+## Installation
 
-1. Install RocksDB:
+### Install RocksDB (macOS)
 
-   ```bash
-   # On macOS with Homebrew
-   brew install rocksdb
+```bash
+brew install rocksdb
+```
 
-   # On Ubuntu/Debian
-   sudo apt-get install -y librocksdb-dev \
-       libsnappy-dev \
-       liblz4-dev \
-       libzstd-dev \
-       libgflags-dev \
-       libbz2-dev
-   ```
+### Install Protocol Buffers compiler
 
-2. Verify RocksDB installation:
+```bash
+brew install protobuf
+```
 
-   ```bash
-   # On macOS
-   brew list rocksdb  # This will show the installation paths
-   
-   # On Ubuntu/Debian
-   dpkg -L librocksdb-dev
-   ```
-2. Install Protocol Buffers compiler:
+### Install Go dependencies
 
-   ```bash
-   # Ubuntu/Debian
-   sudo apt-get install -y protobuf-compiler 
+```bash
+go mod tidy
+```
 
-   # macOS
-   brew install protobuf
-   ```
+## Building
 
-3. Install Go protobuf and gRPC plugins:
+1. Generate Protocol Buffer code:
+```bash
+protoc --go_out=. --go_opt=paths=source_relative \
+    --go-grpc_out=. --go-grpc_opt=paths=source_relative \
+    api/proto/rocksdb.proto
+```
 
-   ```bash
-   # Install protoc plugins for Go
-   go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-   go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+2. Build the service:
+```bash
+CGO_CFLAGS="-I/opt/homebrew/Cellar/rocksdb/9.7.4/include" \
+CGO_LDFLAGS="-L/opt/homebrew/lib -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd" \
+go build -o rocksdb-service ./cmd/server
+```
 
-   # Add Go bin directory to PATH (add this to your .bashrc or .zshrc for permanence)
-   export PATH="$PATH:$(go env GOPATH)/bin"
-
-   # Verify installations
-   which protoc-gen-go
-   which protoc-gen-go-grpc
-   ```
-
-4. Generate protobuf code (run from project root directory):
-
-   ```bash
-   # Verify you are in the project root
-   ls api/proto/rocksdb.proto
-
-   # Generate the protobuf and gRPC code
-   protoc --go_out=. --go_opt=paths=source_relative \
-       --go-grpc_out=. --go-grpc_opt=paths=source_relative \
-       api/proto/rocksdb.proto
-
-   # Verify the generated files exist
-   ls -l api/proto/rocksdb.pb.go api/proto/rocksdb_grpc.pb.go
-   ```
-
-5. Build the service:
-
-   First, ensure you have the correct RocksDB paths:
-
-   ```bash
-   # On macOS with Homebrew, find RocksDB path
-   export ROCKSDB_PATH=$(brew --prefix rocksdb)
-   
-   # Build the service
-   CGO_CFLAGS="-I${ROCKSDB_PATH}/include" \
-   CGO_LDFLAGS="-L${ROCKSDB_PATH}/lib -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd" \
-   go build -o rocksdb-service ./cmd/server
-
-   # Alternative: if you know the exact paths, you can use them directly:
-   # For Apple Silicon (M1/M2) Macs:
-   CGO_CFLAGS="-I/opt/homebrew/Cellar/rocksdb/9.7.4/include" \
-   CGO_LDFLAGS="-L/opt/homebrew/lib -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd" \
-   go build -o rocksdb-service ./cmd/server
-
-   # For Intel Macs:
-   CGO_CFLAGS="-I/usr/local/Cellar/rocksdb/9.7.4/include" \
-   CGO_LDFLAGS="-L/usr/local/lib -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd" \
-   go build -o rocksdb-service ./cmd/server
-
-   # For Ubuntu/Debian:
-   CGO_CFLAGS="-I/usr/include/rocksdb" \
-   CGO_LDFLAGS="-L/usr/lib -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd" \
-   go build -o rocksdb-service ./cmd/server
-   ```
-
-   Note: The build uses the `github.com/linxGnu/grocksdb` package which is actively maintained and compatible with recent RocksDB versions.
-
-## Docker Build and Run
-
-1. Build the Docker image:
-
-   ```bash
-   docker build -t rocksdb-service .
-   ```
-
-2. Run the container:
-
-   ```bash
-   docker run -d \
-       -p 50051:50051 \
-       -v rocksdb-data:/data/rocksdb \
-       rocksdb-service
-   ```
+Note: Adjust the RocksDB include path according to your installed version.
 
 ## Usage
 
-The service listens on port 50051 by default. You can modify the port and database path using command-line flags:
-
+Start the service:
 ```bash
-./rocksdb-service --port 50051 --db-path /data/rocksdb
+./rocksdb-service [flags]
 ```
 
-### API Examples
+### Available Flags
 
-Using a gRPC client, you can:
+- `--port`: The server port (default: 50051)
+- `--db-path`: Path to RocksDB data directory (default: /data/rocksdb)
 
-1. Store a value:
-   ```protobuf
-   PutRequest {
-       key: "user:1",
-       value: <bytes>
-   }
-   ```
+## Multi-Database Support
 
-2. Retrieve a value:
-   ```protobuf
-   GetRequest {
-       key: "user:1"
-   }
-   ```
+The service supports multiple RocksDB databases. Each database is stored in a separate subdirectory under the main data directory.
 
-3. Stream values by prefix:
-   ```protobuf
-   StreamGetRequest {
-       prefix: "user:"
-   }
-   ```
+### Database Names
+- Each request must specify a database name
+- Database names must be non-empty and should contain only valid filesystem characters
+- Databases are created automatically on first use
+- Each database is isolated from others and stored in its own directory
 
-4. Stream multiple exact keys:
-   ```protobuf
-   StreamGetRequest {
-       keys: {
-           keys: ["user:1", "user:2", "user:3"]
-       }
-   }
-   ```
+### Example Usage
+When making requests to the service, include the database name in each request:
 
-## Implementation Details
+```proto
+// Store data in "users" database
+rpc Put {
+    database_name: "users"
+    key: "user:1"
+    value: "..."
+}
 
-The service uses:
-- RocksDB for persistent key-value storage
-- gRPC for the network protocol
-- Protocol Buffers for data serialization
-- Streaming responses for prefix searches and multi-key requests
-- Graceful shutdown handling
+// Retrieve data from "products" database
+rpc Get {
+    database_name: "products"
+    key: "product:1"
+}
+```
 
-The RocksDB wrapper (`internal/db/rocksdb.go`) provides a clean interface for database operations, while the gRPC service (`cmd/server/main.go`) handles the network protocol and request processing.
+The databases will be created in subdirectories under the specified data directory:
+```
+/data/
+    /users/
+        [RocksDB files]
+    /products/
+        [RocksDB files]
+```
 
-# gorocks
+## API
+
+For detailed API documentation, refer to the protobuf definitions in `api/proto/rocksdb.proto`.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.

@@ -29,13 +29,13 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RocksDBServiceClient interface {
-	// Put stores a key-value pair
+	// Put stores a key-value pair in the specified database
 	Put(ctx context.Context, in *PutRequest, opts ...grpc.CallOption) (*PutResponse, error)
-	// Get retrieves a value for a given key
+	// Get retrieves a value for a given key from the specified database
 	Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error)
-	// Delete removes a key-value pair
+	// Delete removes a key-value pair from the specified database
 	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteResponse, error)
-	// StreamGet retrieves multiple key-value pairs based on exact keys or prefix
+	// StreamGet retrieves multiple key-value pairs based on exact keys or prefix from the specified database
 	StreamGet(ctx context.Context, in *StreamGetRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamGetResponse], error)
 }
 
@@ -100,13 +100,13 @@ type RocksDBService_StreamGetClient = grpc.ServerStreamingClient[StreamGetRespon
 // All implementations must embed UnimplementedRocksDBServiceServer
 // for forward compatibility.
 type RocksDBServiceServer interface {
-	// Put stores a key-value pair
+	// Put stores a key-value pair in the specified database
 	Put(context.Context, *PutRequest) (*PutResponse, error)
-	// Get retrieves a value for a given key
+	// Get retrieves a value for a given key from the specified database
 	Get(context.Context, *GetRequest) (*GetResponse, error)
-	// Delete removes a key-value pair
+	// Delete removes a key-value pair from the specified database
 	Delete(context.Context, *DeleteRequest) (*DeleteResponse, error)
-	// StreamGet retrieves multiple key-value pairs based on exact keys or prefix
+	// StreamGet retrieves multiple key-value pairs based on exact keys or prefix from the specified database
 	StreamGet(*StreamGetRequest, grpc.ServerStreamingServer[StreamGetResponse]) error
 	mustEmbedUnimplementedRocksDBServiceServer()
 }
