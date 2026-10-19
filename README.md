@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" alt="Gorocks logo" width="180">
+</p>
+
 # RocksDB gRPC Service
 
 A gRPC service providing a robust interface to RocksDB, offering key-value storage operations with support for streaming queries.
