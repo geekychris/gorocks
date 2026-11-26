@@ -34,6 +34,23 @@ func NewRocksDB(path string) (*RocksDB, error) {
 	}, nil
 }
 
+// Checkpoint creates a consistent, independent on-disk copy of the database
+// at dir. dir must not already exist; RocksDB creates it. The resulting
+// checkpoint remains valid even as the live database continues to receive
+// writes.
+func (r *RocksDB) Checkpoint(dir string) error {
+	cp, err := r.db.NewCheckpoint()
+	if err != nil {
+		return fmt.Errorf("failed to create checkpoint object: %w", err)
+	}
+	defer cp.Destroy()
+
+	if err := cp.CreateCheckpoint(dir, 0); err != nil {
+		return fmt.Errorf("failed to create checkpoint at %s: %w", dir, err)
+	}
+	return nil
+}
+
 func (r *RocksDB) Close() {
 	r.ro.Destroy()
 	r.wo.Destroy()
