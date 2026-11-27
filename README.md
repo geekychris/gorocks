@@ -19,7 +19,7 @@ A gRPC service providing a robust interface to RocksDB, offering key-value stora
 
 ## Prerequisites
 
-- Go 1.21 or later
+- Go 1.24 or later
 - RocksDB installed (via Homebrew on macOS)
 - Protocol Buffers compiler
 
@@ -113,6 +113,69 @@ The databases will be created in subdirectories under the specified data directo
 ## API
 
 For detailed API documentation, refer to the protobuf definitions in `api/proto/rocksdb.proto`.
+
+## Backup / restore
+
+`cmd/backup` is a standalone CLI that takes a consistent RocksDB checkpoint and
+uploads it to S3 (or any S3-compatible store), and can later rebuild a
+database directory from a stored snapshot. Replication protects against node
+loss but not against logical corruption or an operator error replicated to
+every replica; offsite snapshots cover that gap.
+
+Build it the same way as `cmd/server` (it needs the same RocksDB cgo
+dependencies):
+
+```bash
+CGO_CFLAGS="-I/opt/homebrew/Cellar/rocksdb/9.7.4/include" \
+CGO_LDFLAGS="-L/opt/homebrew/lib -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd" \
+go build -o backup ./cmd/backup
+```
+
+### Flags
+
+- `-op`: `snapshot` or `restore` (required)
+- `-db-path`: path to the RocksDB data directory to snapshot (snapshot only; default `/data/rocksdb`)
+- `-db`: logical database name, used in the snapshot's S3 key (snapshot only, required)
+- `-bucket`: S3 bucket to upload to / restore from (required)
+- `-prefix`: S3 key prefix snapshots are stored under (default `snapshots`)
+- `-region`: AWS region to sign requests for (default `us-east-1`)
+- `-endpoint`: S3-compatible endpoint override, e.g. a local MinIO URL (default: real AWS S3)
+- `-path-style`: use path-style S3 addressing (most S3-compatible stores require this)
+- `-key`: snapshot S3 key to restore (restore only, required)
+- `-out`: destination directory to rebuild the database into; must not already exist (restore only, required)
+
+Credentials are resolved the normal AWS SDK way (environment variables,
+shared config/credentials files, instance/task role, etc.) — there is no
+credentials flag.
+
+### Example: snapshot and restore against a local MinIO
+
+Start MinIO and create a bucket, then take a snapshot:
+
+```bash
+./backup -op=snapshot \
+  -db-path=/data/rocksdb/users \
+  -db=users \
+  -bucket=gorocks-snapshots \
+  -endpoint=http://localhost:9000 \
+  -path-style
+# prints the snapshot's key, e.g.: snapshots/users/20261126T120000Z.tar.gz
+```
+
+Restore it into a fresh directory:
+
+```bash
+./backup -op=restore \
+  -key=snapshots/users/20261126T120000Z.tar.gz \
+  -out=/data/restore/users \
+  -bucket=gorocks-snapshots \
+  -endpoint=http://localhost:9000 \
+  -path-style
+```
+
+`restore` refuses to run if `-out` already exists, so it never clobbers a
+directory a running server has open — stop the server, or restore to a fresh
+path, before pointing it at the restored data.
 
 ## License
 
