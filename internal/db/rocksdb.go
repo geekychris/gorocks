@@ -68,7 +68,8 @@ func (r *RocksDB) Get(key string) ([]byte, bool, error) {
 	}
 	defer slice.Free()
 
-	if slice.Size() == 0 {
+	// A key stored with an empty value exists; only a missing key does not.
+	if !slice.Exists() {
 		return nil, false, nil
 	}
 

@@ -85,3 +85,21 @@ func TestCheckpointRefusesExistingDir(t *testing.T) {
 		t.Fatalf("Checkpoint into an existing directory should fail")
 	}
 }
+
+func TestGetTellsAnEmptyValueFromAMissingKey(t *testing.T) {
+	r, err := NewRocksDB(filepath.Join(t.TempDir(), "db"))
+	if err != nil {
+		t.Fatalf("NewRocksDB: %v", err)
+	}
+	defer r.Close()
+
+	if err := r.Put("empty", []byte{}); err != nil {
+		t.Fatalf("Put empty: %v", err)
+	}
+	if v, ok, err := r.Get("empty"); err != nil || !ok || len(v) != 0 {
+		t.Errorf("Get(empty) = %q, %v, %v; want an empty value that exists", v, ok, err)
+	}
+	if _, ok, err := r.Get("missing"); err != nil || ok {
+		t.Errorf("Get(missing) found = %v, err = %v; want not found", ok, err)
+	}
+}
